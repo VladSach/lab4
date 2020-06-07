@@ -5,13 +5,12 @@ class Pixel(object):
         self.blue = b
 
     def __mul__(self, other):
+        # Метод которые вызывается автоматически при умножении
         return Pixel(self.red * other, self.green * other, self.blue * other)
 
     def __add__(self, other):
+        # Метод которые вызывается автоматически при суммировании
         return Pixel(self.red + other.red, self.green + other.green, self.blue + other.blue)
-
-    def __str__(self):
-        return f"red: {self.red}, green: {self.green}, blue: {self.blue}"
 
 
 class Image(object):
@@ -21,81 +20,34 @@ class Image(object):
         self.pixels = []
 
     def _interpolate(self, pX, pY):
+        # Короче, что это и главное зачем он нахуй нужон этот ваш интерполятор
+        """
+        Суть такова: Это билинейная интерполяция, по факту, одна из самых простых.
+        Работает по простому принципу: берем один пиксель, который мы не знаем,
+        ебошим 4 пикселя, которые мы знаем как выглядят и которые находяться на по диагонали
+        т.е. считай что у нас квадрат 2 на 2, в центре искомый, а на краях извесные.
+        Мы и присваем неизвестному пикселю среднее значение между теми 4 что мы знаем
+        """
+
+        # Собсна сам неизвестный пикесь
         x1 = int(pX)
         y1 = int(pY)
         x2 = min(x1 + 1, self.width - 1)
         y2 = min(y1 + 1, self.height - 1)
 
+        # 4 пикселя вокруг него
+        bottom_left = self.pixels[y1][x1]
+        bottom_right = self.pixels[y1][x2]
+        top_left = self.pixels[y2][x1]
+        top_right = self.pixels[y2][x2]
+
         lx = pX - x1
         ly = pY - y1
 
-        bl = self.pixels[y1][x1]
-        br = self.pixels[y1][x2]
-        tl = self.pixels[y2][x1]
-        tr = self.pixels[y2][x2]
-
-        r1 = br * lx + bl * (1. - lx)
-        r2 = tr * lx + tl * (1. - lx)
+        # находим наше усредненное значение
+        r1 = bottom_right * lx + bottom_left * (1. - lx)
+        r2 = top_right * lx + top_left * (1. - lx)
 
         pixel = r2 * ly + r1 * (1. - ly)
-        return Pixel(int(pixel.r), int(pixel.g), int(pixel.b))
 
-    def read(self, file_name):
-        f = open(file_name, 'rb')
-        f.seek(2)
-        file_size = struct.unpack('<L', f.read(4))[0]
-        f.seek(18)
-        self.width, self.height = struct.unpack('<LL', f.read(8))
-        self.pixels = [[Pixel(0, 0, 0) for _ in range(self.width)] for _ in range(self.height)]
-        f.seek(54)
-        t = f.tell()
-        i = j = 0
-        while t < file_size and i < self.height and j < self.width:
-            r, g, b = struct.unpack('<BBB', f.read(3))
-            t = f.tell()
-            self.pixels[i][j].r = r
-            self.pixels[i][j].g = g
-            self.pixels[i][j].b = b
-            j += 1
-            if j >= self.width:
-                n = (4 - ((self.width * 3) % 4)) % 4
-                f.read(n)
-                t = f.tell()
-                i += 1
-                j = 0
-        f.close()
-
-    def write(self, file_name):
-        f = open(file_name, "wb")
-        f.write(struct.pack("<BB", ord("B"), ord("M")))
-        pos = f.tell()
-        f.write(struct.pack("<L", 0))
-        f.write(struct.pack("<L", 0))
-        f.write(struct.pack("<L", 54))
-        f.write(struct.pack("<L", 40))
-        f.write(struct.pack("<LL", self.width, self.height))
-        f.write(struct.pack("<H", 1))
-        f.write(struct.pack("<H", 24))
-        f.write(struct.pack("<LLLLLL", 0, 0, 0, 0, 0, 0))
-        for row in self.pixels:
-            for pixel in row:
-                f.write(struct.pack("<BBB", pixel.r, pixel.g, pixel.b))
-            for _ in range((4 - ((self.width * 3) % 4)) % 4):
-                f.write(struct.pack("<B", 0))
-        file_size = f.tell()
-        f.seek(pos)
-        f.write(struct.pack("<L", file_size))
-        f.close()
-
-    def get_scaled(self, scale):
-        scaled_width = int(self.width * scale)
-        scaled_height = int(self.height * scale)
-        scaled_image = Image()
-        scaled_image.width = scaled_width
-        scaled_image.height = scaled_height
-        scaled_image.pixels = [[None for _ in range(scaled_width)] for _ in range(scaled_height)]
-        for i in range(scaled_height):
-            for j in range(scaled_width):
-                scaled_image.pixels[i][j] = self._interpolate(j * self.width / scaled_width,
-                                                              i * self.height / scaled_height)
-        return scaled_image
+        return Pixel(int(pixel.red), int(pixel.green), int(pixel.blue))
