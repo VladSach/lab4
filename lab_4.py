@@ -1,7 +1,10 @@
 import sys
+from classes import*
 
 
+image = Image()
 image_in, image_out, scale = sys.argv[1], sys.argv[2], sys.argv[3]
-print(image_in)
-print(image_out)
-print(scale)
+
+image.read(image_in)
+image2 = image.scale(scale)
+image2.write(image_out)
