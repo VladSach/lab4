@@ -1,3 +1,6 @@
+import struct
+
+
 class Pixel(object):
     def __init__(self, r, g, b):
         self.red = r
@@ -11,6 +14,9 @@ class Pixel(object):
     def __add__(self, other):
         # Метод которые вызывается автоматически при суммировании
         return Pixel(self.red + other.red, self.green + other.green, self.blue + other.blue)
+
+    def __str__(self):
+        return f"red: {self.red}, green: {self.green}, blue: {self.blue}"
 
 
 class Image(object):
@@ -51,3 +57,70 @@ class Image(object):
         pixel = r2 * ly + r1 * (1. - ly)
 
         return Pixel(int(pixel.red), int(pixel.green), int(pixel.blue))
+
+    def read_bmp(self, file_name):
+        file = open(file_name, 'rb')
+        file.seek(2)
+        # Считываем размер нашего файла
+        file_size = struct.unpack('<L', file.read(4))[0]
+        file.seek(18)
+        # Тут уже считываем высоту и ширину нашей картинки
+        self.width, self.height = struct.unpack('<LL', file.read(8))
+        # Готовим двумерный массив для пикселей
+        self.pixels = [[Pixel(0, 0, 0) for i in range(self.width)] for j in range(self.height)]
+        file.seek(54)
+        position = file.tell()
+        h = w = 0
+        while position < file_size and h < self.height and w < self.width:
+            # Ну и понеслась душа в рай, заполняем наш масив
+            r, g, b = struct.unpack('<BBB', file.read(3))
+            position = file.tell()
+            self.pixels[h][w].red = r
+            self.pixels[h][w].green = g
+            self.pixels[h][w].blue = b
+            w += 1
+            if w >= self.width:
+                n = (4 - ((self.width * 3) % 4)) % 4
+                file.read(n)
+                position = file.tell()
+                h += 1
+                w = 0
+        file.close()
+
+    def just_zoom(self, scale):
+        # Приближаем нашу картинку
+        zoomed_width = int(self.width * scale)
+        zoomed_height = int(self.height * scale)
+        zoomed_image = Image()
+        zoomed_image.width = zoomed_width
+        zoomed_image.height = zoomed_height
+        zoomed_image.pixels = [[None for i in range(zoomed_width)] for j in range(zoomed_height)]
+        for i in range(zoomed_height):
+            for j in range(zoomed_width):
+                zoomed_image.pixels[i][j] = self._interpolate(j * self.width / zoomed_width,
+                                                              i * self.height / zoomed_height)
+        return zoomed_image
+
+    def write_bmp(self, file_name):
+        # Ну тут как бы из названия можно понять, что записываем картинку в новый файл
+        file = open(file_name, "wb")
+        file.write(struct.pack("<BB", ord("B"), ord("M")))
+        position = file.tell()
+        # Распаковали? Молодцы! Пакуем обратно -_-
+        file.write(struct.pack("<L", 0))
+        file.write(struct.pack("<L", 0))
+        file.write(struct.pack("<L", 54))
+        file.write(struct.pack("<L", 40))
+        file.write(struct.pack("<LL", self.width, self.height))
+        file.write(struct.pack("<H", 1))
+        file.write(struct.pack("<H", 24))
+        file.write(struct.pack("<LLLLLL", 0, 0, 0, 0, 0, 0))
+        for row in self.pixels:
+            for pixel in row:
+                file.write(struct.pack("<BBB", pixel.r, pixel.g, pixel.b))
+            for _ in range((4 - ((self.width * 3) % 4)) % 4):
+                file.write(struct.pack("<B", 0))
+        file_size = file.tell()
+        file.seek(position)
+        file.write(struct.pack("<L", file_size))
+        file.close()
