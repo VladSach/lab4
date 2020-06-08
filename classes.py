@@ -1,7 +1,7 @@
 import struct
 
 
-class Pixel(object):
+class Pixel():
     def __init__(self, r, g, b):
         self.red = r
         self.green = g
@@ -16,7 +16,7 @@ class Pixel(object):
         return Pixel(self.red + other.red, self.green + other.green, self.blue + other.blue)
 
 
-class Image(object):
+class Image():
     def __init__(self):
         self.width = 0
         self.height = 0
@@ -27,17 +27,34 @@ class Image(object):
         """
         Суть такова: Это билинейная интерполяция, по факту, одна из самых простых.
         Работает по простому принципу: берем один пиксель, который мы не знаем,
-        ебошим 4 пикселя, которые мы знаем как выглядят и которые находяться на по диагонали
+        берем 4 пикселя, которые мы знаем как выглядят и которые находяться на диагонали
         т.е. считай что у нас квадрат 2 на 2, в центре искомый, а на краях извесные.
         Мы и присваем неизвестному пикселю среднее значение между теми 4 что мы знаем
         """
 
         # Собсна сам неизвестный пикесь
+        """if x1 == 1:
+            x2 = 0
+        else:
+            x2 = 1
+        if y1 == 1:
+            y2 = 0
+        else:
+            y2 = 1
+"""
         x1 = int(pX)
         y1 = int(pY)
         x2 = min(x1 + 1, self.width - 1)
         y2 = min(y1 + 1, self.height - 1)
-
+        if x1 == 1:
+            x2 = 0
+        else:
+            x2 = 1
+        if y1 == 1:
+            y2 = 0
+        else:
+            y2 = 1
+        print(x1, y1, x2, y2)
         # 4 пикселя вокруг него
         bottom_left = self.pixels[y1][x1]
         bottom_right = self.pixels[y1][x2]
